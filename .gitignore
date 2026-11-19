@@ -1,0 +1,22 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+
+# local environment / OS junk
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# heavy or regenerated media (rebuilt by voice_lumean.py / build.py)
+parts/*/audio/
+parts/*/voice.wav
+parts/*/*_voice.mp3
+parts/*/silent.mp4
+parts/*/pops.json
+parts/*/snap_*.jpg
+parts/*/stills.mp4
+voice_samples/
+share/*.mp4
+sfx/demo.mp3

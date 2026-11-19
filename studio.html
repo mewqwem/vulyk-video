@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вулик · частини</title>
+<style>
+:root{--bg:#f4efe8;--panel:#fff;--ink:#22252c;--mute:#857b6f;--line:#e6ddd1;--acc:#FF6A2B;--ok:#2E9E57;--warn:#E8901A;--bad:#E23B3B;--honey:#F2A516}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;align-items:center;gap:12px;padding:11px 18px;background:#24180F;color:#F7C531;position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;font-weight:800}
+header .st{color:#d9c9a8;font-size:12px}
+.wrap{display:grid;grid-template-columns:230px 380px minmax(0,1fr);gap:16px;padding:16px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.card h2{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mute);margin:0;padding:11px 14px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center}
+.card h2 .sp{flex:1}
+.sticky{position:sticky;top:62px}
+/* parts list */
+.parts{padding:6px;display:flex;flex-direction:column;gap:4px}
+.part{display:block;text-decoration:none;color:inherit;padding:10px 11px;border-radius:9px;border:1px solid transparent}
+.part:hover{background:#faf5ee}
+.part.on{background:#fff6e6;border-color:#f3d9a4}
+.part b{display:block;font-size:14px}
+.part .m{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.badge{font-size:11px;padding:1px 7px;border-radius:20px;background:#f1ebe2;color:var(--mute);white-space:nowrap}
+.badge.on{background:#e3f4e9;color:var(--ok)}
+/* preview */
+.pv{padding:12px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.stage{width:354px;height:629px;overflow:hidden;border-radius:10px;background:#000;position:relative}
+.stage iframe{width:1080px;height:1920px;border:0;transform:scale(.32778);transform-origin:0 0;pointer-events:none}
+.err{position:absolute;inset:auto 8px 8px 8px;background:#fff0f0;color:var(--bad);font-size:12px;padding:6px 8px;border-radius:6px;display:none}
+.ctl{display:flex;gap:8px;align-items:center;width:354px}
+.ctl input{flex:1;accent-color:var(--acc)}
+.ctl button{font:inherit;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 0;width:42px;cursor:pointer}
+.time{font-variant-numeric:tabular-nums;font-size:12px;color:var(--mute);min-width:84px;text-align:right}
+.hint{font-size:12px;color:var(--mute)}
+.tabs{display:flex;gap:4px;padding:8px 12px 0}
+.tabs button{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;color:var(--mute)}
+.tabs button.on{background:#24180F;color:#F7C531;border-color:#24180F}
+video{width:354px;border-radius:10px;background:#000}
+/* script */
+.lines{padding:6px}
+.sec{font-weight:800;color:#8a5a12;padding:12px 10px 4px;font-size:13px}
+.ln{display:grid;grid-template-columns:28px minmax(0,1fr) 120px;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.ln:hover{background:#faf5ee}
+.ln.cur{background:#fff6e6;border-color:#f3d9a4}
+.ln .n{color:var(--mute);font-weight:700;text-align:right}
+.ln .c b{color:var(--acc)}
+.ln .sc{font-size:11px;color:var(--mute)}
+.ln .bal{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.ln .bal small{display:block;font-weight:600;color:var(--bad)}
+.empty{padding:30px;text-align:center;color:var(--mute)}
+@media (max-width:1100px){.wrap{grid-template-columns:1fr}.sticky{position:static}.pv{align-items:center}}
+</style></head>
+<body>
+<header><h1>⬢ Вулик</h1><span class="st" id="sum"></span><span style="flex:1"></span><a href="/voices.html" style="color:#d9c9a8;font-size:13px">Голоси →</a></header>
+
+<div class="wrap">
+  <div class="card sticky">
+    <h2>Частини</h2>
+    <div class="parts" id="parts"></div>
+  </div>
+
+  <div class="card sticky">
+    <div class="tabs" id="tabs" style="display:none">
+      <button data-tab="pv" class="on">Прев'ю</button><button data-tab="vid">Готове відео</button>
+    </div>
+    <div class="pv" id="pvBox">
+      <div class="stage"><iframe id="fr"></iframe><div class="err" id="err"></div></div>
+      <div class="ctl">
+        <button id="play">▶</button>
+        <input type="range" id="seek" min="0" max="100" step="0.01" value="0">
+        <span class="time" id="time">0.0 / 0.0</span>
+      </div>
+      <div class="hint" id="audhint"></div>
+    </div>
+    <div class="pv" id="vidBox" style="display:none">
+      <select id="vids"></select>
+      <video id="vid" controls></video>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Сценарій <span class="sp"></span><span class="hint" style="text-transform:none;letter-spacing:0">клік по рядку = перемотати</span></h2>
+    <div class="lines" id="lines"><div class="empty">Завантаження…</div></div>
+  </div>
+</div>
+
+<audio id="aud" preload="auto"></audio>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const get=p=>fetch(p).then(r=>r.json());
+// same rule as lines.build(): a word is orange if it starts with *
+const capHtml=c=>c.split(' ').map(w=>{const x=esc(w.replace(/\*/g,''));return w.startsWith('*')?`<b>${x}</b>`:x;}).join(' ');
+
+let PARTS=[], PID=null, T=null, t=0, playing=false, lastTs=0, curRow=-1;
+const fr=$('fr');
+
+function renderParts(){
+  $('parts').innerHTML=PARTS.map(p=>`<a class="part${p.id===PID?' on':''}" href="#${p.id}">
+    <b>${esc(p.title)}</b>
+    <span class="m">${fmt(p.start)} → ${fmt(p.end)} ₴ · ${p.lines} рядків</span>
+    <span class="badges">
+      <span class="badge${p.voiced?' on':''}">${p.voiced?'озвучено':'без озвучки'}</span>
+      <span class="badge${p.videos.length?' on':''}">${p.videos.length?'відео готове':'відео ще нема'}</span>
+    </span></a>`).join('')||'<div class="empty">Немає частин у parts/</div>';
+}
+
+function renderLines(){
+  let bal=T.start, h='', lastSec='';
+  T.lines.forEach((l,i)=>{
+    const sum=l.ded.reduce((a,[,v])=>a+v,0); bal-=sum;
+    const col=bal/T.start>0.5?'var(--ok)':bal/T.start>0.12?'var(--warn)':'var(--bad)';
+    const p=T.phrases[i];
+    h+=`<div class="ln" id="ln${i}" data-i="${i}">
+      <span class="n">${i}</span>
+      <div><div class="c">${capHtml(l.cap)}</div><div class="sc">${esc(l.scene)} · ${(p.e-p.s).toFixed(1)} с</div></div>
+      <div class="bal" style="color:${col}">${fmt(bal)} ₴${sum?`<small>−${fmt(sum)}</small>`:''}</div></div>`;
+  });
+  $('lines').innerHTML=h;
+}
+$('lines').addEventListener('click',e=>{const r=e.target.closest('.ln'); if(r&&T) seek(T.phrases[+r.dataset.i].s+0.01);});
+
+async function openPart(pid){
+  setPlay(false); PID=pid; renderParts();
+  const p=PARTS.find(x=>x.id===pid);
+  $('lines').innerHTML='<div class="empty">Завантаження…</div>';
+  T=await get('/api/timing?part='+encodeURIComponent(pid));
+  if(T.error){ $('lines').innerHTML=`<div class="empty">Помилка: ${esc(T.error)}</div>`; T=null; return; }
+  $('sum').textContent=`${p.title} · ${T.duration.toFixed(0)} с`;
+  renderLines(); t=0; curRow=-1;
+  fr.src=`parts/${pid}/scene.html?${Date.now()}`;
+  // finished videos
+  $('tabs').style.display=p.videos.length?'':'none';
+  $('vids').innerHTML=p.videos.map(v=>`<option>${esc(v)}</option>`).join('');
+  $('vids').style.display=p.videos.length>1?'':'none';
+  if(p.videos.length) $('vid').src=`parts/${pid}/${p.videos[0]}?${Date.now()}`;
+  showTab('pv');
+  $('audhint').textContent=T.voice?'Зі звуком (voice.wav)':T.real?'Без звуку: voice.wav з’явиться після збирання':'Без звуку, таймінг приблизний (ще не озвучено)';
+  if(T.voice) $('aud').src=`parts/${pid}/voice.wav?${Date.now()}`; else $('aud').removeAttribute('src');
+}
+fr.onload=()=>{ const w=fr.contentWindow; if(!T||!w.render) return;
+  w.P=T.phrases.map(p=>({s:p.s,e:p.e})); w.WORDS=T.phrases.flatMap(p=>p.words); w.GROUPS=T.groups; w.PH=T.phrases;
+  $('seek').max=T.duration; draw(); };
+
+function showTab(k){
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===k));
+  $('pvBox').style.display=k==='pv'?'':'none'; $('vidBox').style.display=k==='vid'?'':'none';
+  if(k==='vid') setPlay(false); else $('vid').pause();
+}
+$('tabs').onclick=e=>{const b=e.target.closest('button'); if(b) showTab(b.dataset.tab);};
+$('vids').onchange=e=>$('vid').src=`parts/${PID}/${e.target.value}?${Date.now()}`;
+
+function draw(){
+  const w=fr.contentWindow; if(!T||!w||!w.render) return;
+  try{ w.render(t); $('err').style.display='none'; }
+  catch(e){ $('err').textContent='Помилка сцени: '+e.message; $('err').style.display='block'; }
+  $('seek').value=t; $('time').textContent=`${t.toFixed(1)} / ${T.duration.toFixed(1)}`;
+  let k=-1; T.phrases.forEach((p,i)=>{if(t>=p.s-0.05) k=i;});
+  if(k!==curRow){ const o=$('ln'+curRow); if(o) o.classList.remove('cur'); curRow=k; const el=$('ln'+k);
+    if(el){ el.classList.add('cur'); if(playing) el.scrollIntoView({block:'nearest',behavior:'smooth'}); } }
+}
+function seek(v){ if(!T) return; t=Math.max(0,Math.min(v,T.duration)); if(T.voice) $('aud').currentTime=t; draw(); }
+function setPlay(v){
+  playing=v; $('play').textContent=v?'❚❚':'▶'; const a=$('aud');
+  if(v){ if(t>=T.duration-0.05) t=0; lastTs=performance.now(); if(T.voice){a.currentTime=t;a.play().catch(()=>{});} requestAnimationFrame(tick); }
+  else a.pause();
+}
+function tick(ts){
+  if(!playing) return; const a=$('aud');
+  if(T.voice&&!a.paused) t=a.currentTime; else t+=(ts-lastTs)/1000;
+  lastTs=ts;
+  if(t>=T.duration){ t=T.duration; draw(); return setPlay(false); }
+  draw(); requestAnimationFrame(tick);
+}
+$('play').onclick=()=>T&&setPlay(!playing);
+$('seek').oninput=e=>seek(+e.target.value);
+document.addEventListener('keydown',e=>{ if(e.code==='Space'&&e.target.tagName!=='SELECT'&&$('pvBox').style.display!=='none'){e.preventDefault(); T&&setPlay(!playing);} });
+
+async function route(){
+  PARTS=await get('/api/parts');
+  const pid=location.hash.slice(1);
+  const target=PARTS.find(p=>p.id===pid)?pid:(PARTS.length?PARTS[PARTS.length-1].id:null);
+  if(target) openPart(target); else renderParts();
+}
+window.addEventListener('hashchange',route);
+route();
+</script>
+</body></html>

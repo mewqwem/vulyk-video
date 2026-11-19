@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'Inter';src:url('../../fonts/Inter.ttf') format('truetype');font-weight:100 900;}
+html,body{margin:0;padding:0;width:1080px;height:1920px;overflow:hidden;background:#EFE6DA}
+svg{display:block}
+text{font-family:'Inter';}
+</style></head>
+<body>
+<svg id="s" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+// ---------- helpers ----------
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,k)=>a+(b-a)*k;
+const easeOut=k=>1-Math.pow(1-k,3);
+const easeInOut=k=>k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
+const back=k=>{const c=1.70158;k=clamp(k);return 1+(c+1)*Math.pow(k-1,3)+c*Math.pow(k-1,2);};
+const prog=(t,t0,d)=>clamp((t-t0)/d);
+const fmt=n=>Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const mix=(a,b,k)=>{const A=hex(a),B=hex(b);return 'rgb('+A.map((v,i)=>Math.round(lerp(v,B[i],k))).join(',')+')';};
+function pop(t,t0,body,cx,cy,d=.35){ // scale-in around a point
+  if(window.__pops) window.__pops.push([t0, window.__kind||'pop']); // render.py --pops collects these for sound cues
+  const k=prog(t,t0,d); if(k<=0) return '';
+  const s=back(k);
+  return `<g opacity="${clamp(k*3)}" transform="translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})">${body}</g>`;
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+
+// ---------- character ----------
+function person(x,y,sc=1,mood='neutral',t=0,o={}){
+  const shirt=o.shirt||'#2f7f86', shirt2=o.shirt2||'#276b71', hair=o.hair||'#6b4226', pants=o.pants||'#2b2f3a';
+  // y = feet line
+  const bob=Math.sin(t*2.2)*3;
+  let mouth, brows='';
+  if(mood==='happy') mouth=`<path d="M-22 18 Q0 40 22 18" stroke="#3a2a22" stroke-width="6" fill="none" stroke-linecap="round"/>`;
+  else if(mood==='sad'||mood==='worried') mouth=`<path d="M-18 30 Q0 16 18 30" stroke="#3a2a22" stroke-width="6" fill="none" stroke-linecap="round"/>`;
+  else mouth=`<path d="M-16 24 L16 24" stroke="#3a2a22" stroke-width="6" stroke-linecap="round"/>`;
+  if(mood==='worried'||mood==='sad') brows=`<path d="M-46 -20 L-20 -32 M46 -20 L20 -32" stroke="#4a3020" stroke-width="7" stroke-linecap="round"/>`;
+  const sweat = mood==='worried'?`<path d="M62 -40 q8 14 0 20 q-8 -6 0 -20z" fill="#7cc6ff"/>`:'';
+  return `<g transform="translate(${x} ${y+bob}) scale(${sc})">
+    <ellipse cx="0" cy="0" rx="110" ry="16" fill="#000" opacity=".08"/>
+    <!-- legs -->
+    <rect x="-52" y="-200" width="44" height="190" rx="12" fill="${pants}"/>
+    <rect x="8" y="-200" width="44" height="190" rx="12" fill="${pants}"/>
+    <rect x="-62" y="-22" width="58" height="22" rx="10" fill="#15171c"/>
+    <rect x="4" y="-22" width="58" height="22" rx="10" fill="#15171c"/>
+    <!-- body -->
+    <rect x="-82" y="-420" width="164" height="240" rx="34" fill="${shirt}"/>
+    <rect x="-36" y="-290" width="72" height="44" rx="10" fill="${shirt2}"/>
+    <!-- arms -->
+    <rect x="-112" y="-405" width="40" height="190" rx="20" fill="${shirt}"/>
+    <rect x="72" y="-405" width="40" height="190" rx="20" fill="${shirt}"/>
+    <circle cx="-92" cy="-210" r="20" fill="#f2c7a5"/>
+    <circle cx="92" cy="-210" r="20" fill="#f2c7a5"/>
+    <!-- neck/head -->
+    <rect x="-20" y="-440" width="40" height="30" fill="#e8b892"/>
+    <g transform="translate(0 -520)">
+      <circle cx="-86" cy="6" r="18" fill="#f2c7a5"/>
+      <circle cx="86" cy="6" r="18" fill="#f2c7a5"/>
+      <rect x="-88" y="-90" width="176" height="176" rx="80" fill="#f2c7a5"/>
+      <path d="M-92 -10 Q-96 -104 0 -106 Q96 -104 92 -10 Q70 -60 20 -56 Q-30 -70 -92 -10z" fill="${hair}"/>
+      ${brows}
+      <circle cx="-32" cy="-6" r="9" fill="#2a1d16"/>
+      <circle cx="32" cy="-6" r="9" fill="#2a1d16"/>
+      ${mouth}${sweat}
+    </g>${o.extra||''}
+  </g>`;
+}
+
+// ---------- UI pieces ----------
+function balanceCard(val,color,barK){
+  return `<g>
+   <rect x="60" y="80" width="960" height="190" rx="26" fill="#fff" />
+   <text x="100" y="135" font-size="26" font-weight="700" fill="#9a9a9a" letter-spacing="2">НА РАХУНКУ</text>
+   <text x="100" y="215" font-size="74" font-weight="900" fill="${color}">${fmt(val)} ₴</text>
+   <rect x="100" y="238" width="880" height="10" rx="5" fill="#eee"/>
+   <rect x="100" y="238" width="${880*barK}" height="10" rx="5" fill="${color}"/>
+  </g>`;
+}
+function pill(x,y,label,bg='#2b2f3a',fg='#fff'){
+  const w=label.length*17+44;
+  return `<g><rect x="${x}" y="${y}" width="${w}" height="46" rx="10" fill="${bg}"/>
+  <text x="${x+22}" y="${y+31}" font-size="24" font-weight="800" fill="${fg}" letter-spacing="1.5">${label}</text></g>`;
+}
+function tag(x,y,label,bg='#E23B3B'){ // price tag, x = center
+  const w=label.length*24+60;
+  return `<g><rect x="${x-w/2}" y="${y-36}" width="${w}" height="72" rx="14" fill="${bg}"/>
+  <circle cx="${x-w/2+22}" cy="${y}" r="6" fill="#fff"/>
+  <text x="${x+10}" y="${y+14}" text-anchor="middle" font-size="40" font-weight="900" fill="#fff">${label}</text></g>`;
+}
+function hexagon(cx,cy,r,fill,stroke){
+  let p=[];for(let i=0;i<6;i++){const a=Math.PI/3*i+Math.PI/6;p.push((cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1));}
+  return `<polygon points="${p.join(' ')}" fill="${fill}" ${stroke?`stroke="${stroke}" stroke-width="6"`:''}/>`;
+}
+function meadGlass(cx,cy,s=1,fillK=1,hue='#F2A516'){
+  // tumbler with amber liquid
+  const h=140*s,w=100*s, lh=h*0.75*fillK;
+  return `<g>
+   <path d="M${cx-w/2} ${cy-h/2} L${cx+w/2} ${cy-h/2} L${cx+w/2-10*s} ${cy+h/2} L${cx-w/2+10*s} ${cy+h/2}Z" fill="#ffffff" opacity=".35"/>
+   <path d="M${cx-w/2+ (1-lh/h)*10*s} ${cy+h/2-lh} L${cx+w/2-(1-lh/h)*10*s} ${cy+h/2-lh} L${cx+w/2-10*s} ${cy+h/2} L${cx-w/2+10*s} ${cy+h/2}Z" fill="${hue}"/>
+   <rect x="${cx-w/2+14*s}" y="${cy-h/2+12*s}" width="${8*s}" height="${h*0.6}" rx="${4*s}" fill="#fff" opacity=".5"/>
+  </g>`;
+}
+function bee(x,y,s=1,t=0){
+  const f=Math.sin(t*40)*0.5+0.5;
+  return `<g transform="translate(${x} ${y}) scale(${s})">
+   <ellipse cx="-6" cy="-26" rx="16" ry="${10+f*6}" fill="#fff" opacity=".85"/>
+   <ellipse cx="10" cy="-26" rx="16" ry="${10+(1-f)*6}" fill="#fff" opacity=".85"/>
+   <ellipse cx="0" cy="0" rx="34" ry="24" fill="#F7C531"/>
+   <rect x="-12" y="-23" width="9" height="46" fill="#2a1d16"/>
+   <rect x="6" y="-22" width="9" height="44" fill="#2a1d16"/>
+   <circle cx="26" cy="-4" r="4" fill="#2a1d16"/>
+  </g>`;
+}
+
+// ---------- captions ----------
+function caption(t){
+  const W=window.WORDS; if(!W) return '';
+  // groups of up to 3 words, break at phrase boundaries
+  const groups=window.GROUPS;
+  let g=null;
+  for(const gr of groups){ if(t>=gr.start && t<gr.end) {g=gr;break;} }
+  if(!g) return '';
+  // karaoke: only the word being spoken now is coloured (it stays lit through the short gap after it)
+  let cur=-1; g.words.forEach((w,i)=>{ if(t>=w.s-0.03) cur=i; });
+  const txt=g.words.map((w,i)=>{
+    const col=i===cur?'#FF6A2B':'#ffffff';
+    return `<tspan fill="${col}">${esc(w.text.toUpperCase())}</tspan>`;
+  }).join(' ');
+  const k=prog(t,g.start,.12), s=lerp(.86,1,back(k));
+  const chars=g.words.map(w=>w.text).join(' ').length;
+  const fs=Math.min(76, 960/(chars*0.72+(g.words.length-1)*0.3));
+  return `<g transform="translate(540 1640) scale(${s})">
+    <text x="0" y="0" text-anchor="middle" font-size="${fs.toFixed(1)}" font-weight="900" stroke="#111" stroke-width="16" stroke-linejoin="round" paint-order="stroke" letter-spacing="-1" word-spacing="${(fs*0.3).toFixed(1)}">${txt}</text></g>`;
+}
+
+// ---------- props from part 1 ----------
+function floor(col='#d9ccbb'){ return `<rect x="0" y="1380" width="1080" height="540" fill="${col}"/><rect x="0" y="1380" width="1080" height="8" fill="#00000018"/>`; }
+function stamp(t,t0,txt,cx,cy,col='#E23B3B',rot=-8,fs=64){
+  const w=txt.length*fs*0.72+70; window.__kind='stamp';
+  try { return pop(t,t0,`<g transform="translate(${cx} ${cy}) rotate(${rot})"><rect x="${-w/2}" y="-55" width="${w}" height="110" rx="10" fill="#fff" stroke="${col}" stroke-width="10"/>
+   <text x="0" y="${fs*0.36}" text-anchor="middle" font-size="${fs}" font-weight="900" fill="${col}" letter-spacing="2">${txt}</text></g>`,cx,cy,.28); } finally { window.__kind=null; }
+}
+function bubble(x,y,w,h,txt,fs=40,tailX=null){
+  tailX = tailX??(x+60);
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="30" fill="#fff"/><path d="M${tailX} ${y+h-2} l20 46 l26 -46z" fill="#fff"/>
+   <text x="${x+w/2}" y="${y+h/2+fs*0.36}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#2b2f3a">${txt}</text>`;
+}
+function storefront(cx,by,opts={}){ // by = bottom y
+  const w=opts.w||640,h=opts.h||560, x=cx-w/2, y=by-h;
+  return `<g>
+   <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${opts.wall||'#c8a27a'}"/>
+   ${[0,1,2].map(i=>`<rect x="${x+40+i*(w-80)/3+10}" y="${y+30}" width="${(w-80)/3-20}" height="110" rx="6" fill="#8fb0c4"/>`).join('')}
+   <rect x="${x-20}" y="${y+170}" width="${w+40}" height="20" fill="#7a5a3c"/>
+   <rect x="${x+40}" y="${y+230}" width="${w*0.45}" height="${h-230}" fill="#9cc0d4" stroke="#5b4430" stroke-width="12"/>
+   <rect x="${cx+w*0.1}" y="${y+230}" width="${w*0.3}" height="${h-230}" fill="#5b4430"/>
+   <circle cx="${cx+w*0.36}" cy="${by-(h-230)/2}" r="9" fill="#F7C531"/>
+   ${opts.year?`<text x="${cx}" y="${y+168}" text-anchor="middle" font-size="34" font-weight="900" fill="#5b4430">${opts.year}</text>`:''}
+  </g>`;
+}
+function vat(cx,by,s=1){
+  return `<g transform="translate(${cx} ${by}) scale(${s})">
+   <rect x="-90" y="-300" width="180" height="280" rx="40" fill="#C8763A"/><rect x="-90" y="-300" width="180" height="40" rx="20" fill="#E09455"/>
+   <rect x="-60" y="-250" width="16" height="200" rx="8" fill="#E8A56B" opacity=".7"/>
+   <rect x="-70" y="-20" width="20" height="20" fill="#7a4a24"/><rect x="50" y="-20" width="20" height="20" fill="#7a4a24"/>
+   <rect x="80" y="-110" width="40" height="18" rx="6" fill="#7a4a24"/></g>`;
+}
+function doc(cx,cy,title,s=1,col='#2b2f3a'){
+  return `<g transform="translate(${cx} ${cy}) scale(${s})"><rect x="-110" y="-140" width="220" height="280" rx="14" fill="#fff" stroke="#ddd" stroke-width="4"/>
+   ${[0,1,2,3].map(i=>`<rect x="-75" y="${-60+i*36}" width="${150-(i%2)*40}" height="12" rx="6" fill="#ddd"/>`).join('')}
+   <text x="0" y="-90" text-anchor="middle" font-size="26" font-weight="900" fill="${col}">${title}</text></g>`;
+}
+function factory(cx,by){
+  return `<g transform="translate(${cx} ${by})"><rect x="-150" y="-160" width="300" height="160" fill="#7d8796"/>
+   <path d="M-150 -160 l60 -60 v60 l60 -60 v60 l60 -60 v60z" fill="#7d8796"/><rect x="90" y="-300" width="40" height="160" fill="#5d6673"/>
+   <circle cx="110" cy="-330" r="24" fill="#c9ced6"/><circle cx="140" cy="-370" r="30" fill="#dfe2e7"/>
+   ${[0,1,2].map(i=>`<rect x="${-120+i*90}" y="-110" width="60" height="50" fill="#F7C531"/>`).join('')}</g>`;
+}
+function socket(cx,cy,t){
+  const sp=Math.sin(t*30)>0;
+  return `<g transform="translate(${cx} ${cy})"><rect x="-90" y="-90" width="180" height="180" rx="24" fill="#f4efe6" stroke="#bbb" stroke-width="6"/>
+   <circle cx="0" cy="0" r="56" fill="#e2dbcf"/><circle cx="-20" cy="0" r="10" fill="#555"/><circle cx="20" cy="0" r="10" fill="#555"/>
+   ${sp?`<path d="M60 -60 l40 -30 l-10 30 l40 -20 M70 -20 l50 -10" stroke="#F7C531" stroke-width="10" fill="none" stroke-linecap="round"/>`:''}
+   <path d="M-60 -70 q-30 -60 10 -90" stroke="#333" stroke-width="5" fill="none" opacity=".5"/></g>`;
+}
+function toilet(cx,by){
+  return `<g transform="translate(${cx} ${by})"><rect x="-70" y="-260" width="110" height="120" rx="14" fill="#fff" stroke="#ccc" stroke-width="5"/>
+   <path d="M-100 -140 h180 q0 90 -90 100 q-90 -10 -90 -100z" fill="#fff" stroke="#ccc" stroke-width="5"/><rect x="-40" y="-40" width="80" height="40" fill="#fff" stroke="#ccc" stroke-width="5"/></g>`;
+}
+function neonSign(cx,cy,on){
+  const c=on?'#FFB22E':'#5a4a3a', glow=on?`filter="url(#glow)"`:'';
+  return `<g transform="translate(${cx} ${cy})" ${glow}>${hexagon(-150,0,60,'none')}<polygon points="${[0,1,2,3,4,5].map(i=>{const a=Math.PI/3*i+Math.PI/6;return (-150+60*Math.cos(a))+','+(60*Math.sin(a));}).join(' ')}" fill="none" stroke="${c}" stroke-width="12"/>
+   <text x="60" y="26" text-anchor="middle" font-size="84" font-weight="900" fill="none" stroke="${c}" stroke-width="7" letter-spacing="6">ВУЛИК</text></g>`;
+}
+function woodSign(cx,cy){
+  return `<g transform="translate(${cx} ${cy})"><rect x="-240" y="-70" width="480" height="140" rx="16" fill="#8a5a32" stroke="#5b3a1e" stroke-width="10"/>
+   <text x="0" y="26" text-anchor="middle" font-size="76" font-weight="900" fill="#F7E3B0" letter-spacing="6">ВУЛИК</text></g>`;
+}
+function hexCounter(cx,by,w=760){
+  let o=`<rect x="${cx-w/2}" y="${by-260}" width="${w}" height="40" rx="10" fill="#5b3a1e"/>`;
+  const r=46;
+  for(let row=0;row<2;row++)for(let c=0;c<9;c++){const x=cx-w/2+50+c*r*1.732+(row%2?r*0.866:0);if(x>cx+w/2-40)continue;o+=hexagon(x,by-180+row*r*1.5,r-4,'#F2A516','#C47A10');}
+  return o;
+}
+function chair(x,by){ return `<g transform="translate(${x} ${by})"><rect x="-40" y="-170" width="16" height="170" fill="#5b3a1e"/><rect x="-40" y="-80" width="90" height="16" fill="#8a5a32"/><rect x="34" y="-80" width="16" height="80" fill="#5b3a1e"/></g>`; }
+function plant(x,by){ return `<g transform="translate(${x} ${by})"><rect x="-40" y="-80" width="80" height="80" rx="10" fill="#c9764a"/><ellipse cx="-30" cy="-140" rx="30" ry="60" fill="#3f9a5c"/><ellipse cx="25" cy="-150" rx="28" ry="70" fill="#4fb36c"/><ellipse cx="0" cy="-170" rx="24" ry="70" fill="#3f9a5c"/></g>`; }
+function fridge(x,by){ return `<g transform="translate(${x} ${by})"><rect x="-100" y="-420" width="200" height="420" rx="18" fill="#dfe6ea" stroke="#b7c2c9" stroke-width="6"/><rect x="-80" y="-400" width="160" height="300" rx="8" fill="#9cc7dc"/>
+   ${[0,1,2].map(r=>[0,1,2,3].map(c=>`<rect x="${-68+c*38}" y="${-380+r*95}" width="22" height="70" rx="6" fill="${['#F2A516','#C7451B','#E3B04B','#9C5A1A'][(r+c)%4]}"/>`).join('')).join('')}</g>`; }
+function iceMachine(x,by){ return `<g transform="translate(${x} ${by})"><rect x="-90" y="-200" width="180" height="200" rx="14" fill="#c9d3d9"/><rect x="-60" y="-160" width="120" height="70" rx="8" fill="#e9f6fb"/>
+   ${[0,1,2].map(i=>`<rect x="${-50+i*36}" y="-145" width="28" height="28" rx="6" fill="#bfe6f5" stroke="#8cc9e0" stroke-width="3"/>`).join('')}</g>`; }
+function register(x,by){ return `<g transform="translate(${x} ${by})"><rect x="-110" y="-120" width="220" height="120" rx="12" fill="#3d4450"/><rect x="-70" y="-210" width="140" height="80" rx="8" fill="#22262d"/><text x="0" y="-158" text-anchor="middle" font-size="34" font-weight="900" fill="#5fe08a">25 000</text>
+   ${[0,1,2].map(r=>[0,1,2,3].map(c=>`<rect x="${-90+c*46}" y="${-105+r*32}" width="36" height="24" rx="5" fill="#5d6673"/>`).join('')).join('')}</g>`; }
+function crate(x,by,t0,t){
+  let o=`<rect x="-150" y="-110" width="300" height="110" rx="10" fill="#a8743f" stroke="#7a5228" stroke-width="6"/>`;
+  for(let i=0;i<4;i++){const c=['#F2A516','#C7451B','#E3B04B','#9C5A1A','#B8321F','#F0D27A','#E07B16','#F7C531'][(i+t0*7|0)%8];
+    o=`<rect x="${-120+i*66}" y="-220" width="44" height="130" rx="10" fill="${c}"/><rect x="${-110+i*66}" y="-260" width="24" height="50" rx="6" fill="${c}"/>`+o;}
+  return `<g transform="translate(${x} ${by})">${o}</g>`;
+}
+function generator(x,by){ return `<g transform="translate(${x} ${by})"><rect x="-150" y="-200" width="300" height="200" rx="16" fill="#E8901A"/><rect x="-120" y="-170" width="160" height="110" rx="8" fill="#3d4450"/>
+   ${[0,1,2,3].map(i=>`<rect x="-110" y="${-160+i*25}" width="140" height="10" rx="5" fill="#5d6673"/>`).join('')}<circle cx="95" cy="-115" r="28" fill="#3d4450"/><rect x="-140" y="-10" width="40" height="20" fill="#2b2f3a"/><rect x="100" y="-10" width="40" height="20" fill="#2b2f3a"/></g>`; }
+function powerStation(x,by){ return `<g transform="translate(${x} ${by})"><rect x="-90" y="-150" width="180" height="150" rx="16" fill="#3d4450"/><rect x="-60" y="-120" width="120" height="50" rx="6" fill="#22262d"/><rect x="-54" y="-114" width="${80}" height="38" rx="4" fill="#5fe08a"/><rect x="-60" y="-180" width="120" height="30" rx="10" fill="#5d6673"/></g>`; }
+function note(x,y,s=1){ return `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="0" rx="30" ry="22" fill="#2b2f3a" transform="rotate(-20)"/><rect x="22" y="-130" width="12" height="130" fill="#2b2f3a"/><path d="M34 -130 q50 20 30 70 q0 -40 -30 -40z" fill="#2b2f3a"/></g>`; }
+function moneyBag(x,by,label){ return `<g transform="translate(${x} ${by})"><path d="M-130 0 q-30 -170 80 -220 h100 q110 50 80 220z" fill="#4fb36c"/><path d="M-50 -220 l-30 -50 h160 l-30 50z" fill="#3f9a5c"/><rect x="-60" y="-235" width="120" height="22" rx="10" fill="#2e7a46"/>
+   <text x="0" y="-80" text-anchor="middle" font-size="54" font-weight="900" fill="#fff">${label}</text></g>`; }
+function beer(x,y){ return `<g transform="translate(${x} ${y})"><rect x="-55" y="-90" width="110" height="180" rx="12" fill="#F2B632"/><rect x="-55" y="-110" width="110" height="40" rx="20" fill="#fff"/><path d="M55 -50 h30 q20 0 20 20 v50 q0 20 -20 20 h-30" stroke="#F2B632" stroke-width="16" fill="none"/></g>`; }
+function shot(x,y){ return `<g transform="translate(${x} ${y})"><path d="M-40 -60 h80 l-10 120 h-60z" fill="#e9f3f6" stroke="#b7c2c9" stroke-width="5"/><path d="M-35 -20 h70 l-6 78 h-58z" fill="#d9eef5"/></g>`; }
+function door(x,by,label,col){ return `<g transform="translate(${x} ${by})"><rect x="-130" y="-520" width="260" height="520" rx="14" fill="${col}"/><rect x="-100" y="-490" width="200" height="200" rx="8" fill="#ffffff22"/><rect x="-100" y="-260" width="200" height="200" rx="8" fill="#ffffff22"/><circle cx="90" cy="-250" r="12" fill="#F7C531"/>
+   <text x="0" y="-560" text-anchor="middle" font-size="46" font-weight="900" fill="#2b2f3a">${label}</text></g>`; }
+const APRON={extra:`<rect x="-70" y="-330" width="140" height="190" rx="14" fill="#F7C531"/><rect x="-70" y="-280" width="140" height="24" fill="#2a1d16"/><rect x="-70" y="-220" width="140" height="24" fill="#2a1d16"/>`};
+const SUIT={shirt:'#33384a',shirt2:'#2a2e3d',hair:'#2a2a2a',extra:`<path d="M0 -420 l-14 20 l14 110 l14 -110z" fill="#C7451B"/>`};
+
+// ===================== PART 4 · ПЕРЕВІРКА =====================
+const START=307500, PEAK=360000;
+const DAY={h:56,j:49,m:50,w:54,i:56,n2:56,n3:59,n4:59,n5:59,k1:61,k2:62,f:62};
+const LABELS={h:'ЧАСТИНА 4 · ПЕРЕВІРКА',j:'ЮРИСТ',m:'ДЕШЕВА МЕДОВУХА',w:'ТИЖДЕНЬ',i:'ПЕРЕВІРКА',n:'НАСЛІДКИ',k:'ГРОШІ',f:'ФІНАЛ'};
+function dayOf(key){ return DAY[key]||DAY[key[0]]; }
+function S(key){ return window.PH.find(p=>p.scene===key); }
+function W(key,i){ const p=S(key); const w=p.words; return w[Math.max(0,Math.min(i,w.length-1))].s; } // start of word i
+function balanceAt(t){
+  let v=START; for(const p of window.PH) for(const [td,a] of p.ded) v-=a*easeInOut(prog(t,td,.6));
+  return v;
+}
+function balColor(v){ const k=v/PEAK; return k>0.45?'#2E9E57':(k>0.15?'#E8901A':'#E23B3B'); }
+function moneyFloats(t){
+  let o='';
+  for(const p of window.PH) for(const [td,a] of p.ded){
+    const k=(t-td)/1.4; if(k<0||k>1) continue;
+    const inc=a<0;
+    o+=`<text x="980" y="${330-k*40}" text-anchor="end" font-size="58" font-weight="900" fill="${inc?'#2E9E57':'#E23B3B'}" opacity="${1-Math.pow(k,3)}" stroke="#fff" stroke-width="10" paint-order="stroke">${inc?'+':'−'}${fmt(Math.abs(a))} ₴</text>`;
+  }
+  return o;
+}
+function header(t,key){
+  const v=balanceAt(t), col=balColor(v), d=dayOf(key);
+  // when did this day start?
+  let d0=0, prev=null; for(const p of window.PH){ if(p.s>t+0.05) break; const dd=dayOf(p.scene); if(dd!==prev){ d0=p.s; prev=dd; } }
+  const k=prog(t,d0,.45), s=d0>0.5?lerp(1.5,1,back(k)):1;
+  return `<g>
+   <rect x="60" y="80" width="960" height="190" rx="26" fill="#fff" />
+   <text x="100" y="135" font-size="26" font-weight="700" fill="#9a9a9a" letter-spacing="2">НА РАХУНКУ</text>
+   <text x="100" y="215" font-size="74" font-weight="900" fill="${col}">${fmt(v)} ₴</text>
+   <rect x="100" y="238" width="880" height="10" rx="5" fill="#eee"/>
+   <rect x="100" y="238" width="${880*clamp(v/PEAK)}" height="10" rx="5" fill="${col}"/>
+   <line x1="760" y1="110" x2="760" y2="215" stroke="#eee" stroke-width="4"/>
+   <text x="980" y="135" text-anchor="end" font-size="26" font-weight="700" fill="#9a9a9a" letter-spacing="2">ДЕНЬ</text>
+   <g transform="translate(980 215) scale(${s}) translate(-980 -215)"><text x="980" y="215" text-anchor="end" font-size="74" font-weight="900" fill="#2b2f3a">${d}</text></g>
+  </g>`;
+}
+// ---------- characters ----------
+const NAZAR={};
+const NAZAR_BAR={...APRON};
+const VLAD={shirt:'#D7372F',shirt2:'#b52a24',hair:'#2a1d16',extra:
+  `<g transform="translate(0 -520)"><rect x="-72" y="-96" width="62" height="34" rx="13" fill="#1b1d22" stroke="#E3B04B" stroke-width="5"/><rect x="10" y="-96" width="62" height="34" rx="13" fill="#1b1d22" stroke="#E3B04B" stroke-width="5"/><rect x="-12" y="-86" width="24" height="7" fill="#E3B04B"/><path d="M-60 -86 l18 0 M22 -86 l18 0" stroke="#ffffff88" stroke-width="5" stroke-linecap="round"/></g>`};
+const PHONE_EAR=`<g transform="translate(0 -520)"><rect x="80" y="-40" width="34" height="74" rx="8" fill="#22262d"/></g>`;
+const VLAD_PHONE={...VLAD,extra:VLAD.extra+PHONE_EAR};
+const MILANA={...APRON,shirt:'#7a5aa6',shirt2:'#664a8e',hair:'#C4562A',extra:APRON.extra+
+  `<g transform="translate(0 -520)"><circle cx="0" cy="-112" r="42" fill="#C4562A"/><rect x="-104" y="-40" width="28" height="120" rx="14" fill="#C4562A"/><rect x="76" y="-40" width="28" height="120" rx="14" fill="#C4562A"/></g>`};
+const BLOGGERS=[{shirt:'#E85D9A',shirt2:'#c94a82',hair:'#2a1d16'},{shirt:'#3fa7d6',shirt2:'#2f8ab3',hair:'#d9a441'},{shirt:'#8bc34a',shirt2:'#73a83a',hair:'#6b4226'}];
+const PHONE_UP=`<g transform="translate(-112 -330)"><rect x="-30" y="-120" width="60" height="110" rx="10" fill="#22262d"/><rect x="-22" y="-110" width="44" height="80" rx="4" fill="#7fd0ff"/><circle cx="12" cy="-100" r="6" fill="#E23B3B"/></g>`;
+function heroCard(t,t0,x,y,name,age,traits,accent){
+  const h=150+traits.length*52;
+  const body=`<g><rect x="${x}" y="${y}" width="440" height="${h}" rx="26" fill="#fff"/><rect x="${x}" y="${y}" width="16" height="${h}" rx="8" fill="${accent}"/>
+   <text x="${x+44}" y="${y+76}" font-size="58" font-weight="900" fill="#2b2f3a">${name}</text>
+   <text x="${x+44}" y="${y+118}" font-size="30" font-weight="700" fill="#9a8f80">${age}</text>
+   ${traits.map((tr,i)=>`<circle cx="${x+54}" cy="${y+164+i*52}" r="8" fill="${accent}"/><text x="${x+76}" y="${y+175+i*52}" font-size="32" font-weight="700" fill="#2b2f3a">${tr}</text>`).join('')}</g>`;
+  return pop(t,t0,body,x+220,y+h/2,.4);
+}
+// ---------- props ----------
+function clockPill(t,t0,txt,x=540,y=430){ const w=Math.max(260,txt.length*31+120), L=x-w/2;
+  return pop(t,t0,`<g><rect x="${L}" y="${y-44}" width="${w}" height="88" rx="44" fill="#2b2f3a"/><circle cx="${L+50}" cy="${y}" r="24" fill="none" stroke="#F7C531" stroke-width="6"/><path d="M${L+50} ${y-14} v14 h12" stroke="#F7C531" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <text x="${L+92}" y="${y+18}" font-size="50" font-weight="900" fill="#fff">${txt}</text></g>`,x,y); }
+function check(cx,cy,r=60){ return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#2E9E57"/><path d="M${cx-r*.45} ${cy+r*.02} l${r*.33} ${r*.33} l${r*.6} ${r*-.68}" stroke="#fff" stroke-width="${r*.22}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`; }
+function cross(cx,cy,r=60){ return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#E23B3B"/><path d="M${cx-r*.38} ${cy-r*.38} l${r*.76} ${r*.76} M${cx+r*.38} ${cy-r*.38} l${r*-.76} ${r*.76}" stroke="#fff" stroke-width="${r*.22}" stroke-linecap="round"/>`; }
+function phoneBig(cx,cy,rows){ return `<g><rect x="${cx-230}" y="${cy-380}" width="460" height="760" rx="56" fill="#22262d"/><rect x="${cx-206}" y="${cy-330}" width="412" height="660" rx="18" fill="#f4f6f8"/><rect x="${cx-50}" y="${cy-362}" width="100" height="14" rx="7" fill="#3d4450"/>${rows}</g>`; }
+function chatRow(cx,y,name,status,col){ return `<g><circle cx="${cx-140}" cy="${y}" r="38" fill="#c9ced6"/><text x="${cx-140}" y="${y+14}" text-anchor="middle" font-size="36" font-weight="900" fill="#fff">${name[0]}</text>
+  <text x="${cx-84}" y="${y-6}" font-size="32" font-weight="800" fill="#2b2f3a">${name}</text><text x="${cx-84}" y="${y+32}" font-size="26" font-weight="700" fill="${col}">${status}</text></g>`; }
+function logoGlass(x,y,s=1){ const h=140*s,w=100*s; return `<g><path d="M${x-w/2} ${y-h/2} L${x+w/2} ${y-h/2} L${x+w/2-10*s} ${y+h/2} L${x-w/2+10*s} ${y+h/2}Z" fill="#ffffff" stroke="#b7c2c9" stroke-width="${5*s}"/>${hexagon(x,y+8*s,24*s,'#F2A516','#C47A10')}</g>`; }
+function register2(x,by,label){ return `<g transform="translate(${x} ${by})"><rect x="-130" y="-140" width="260" height="140" rx="12" fill="#3d4450"/><rect x="-110" y="-250" width="220" height="96" rx="8" fill="#22262d"/><text x="0" y="-186" text-anchor="middle" font-size="46" font-weight="900" fill="#5fe08a">${label}</text>
+   ${[0,1,2].map(r=>[0,1,2,3,4].map(c=>`<rect x="${-110+c*45}" y="${-124+r*38}" width="36" height="28" rx="5" fill="#5d6673"/>`).join('')).join('')}</g>`; }
+function blackWall(){ return `<rect x="170" y="520" width="740" height="860" fill="#1d1e22"/>
+  ${[0,1,2,3,4,5,6].map(i=>`<rect x="${190+i*102}" y="${560+(i%3)*90}" width="${40+(i%2)*30}" height="6" fill="#2a2b30"/>`).join('')}
+  <g transform="translate(700 1350) rotate(-9)"><rect x="-120" y="-36" width="240" height="72" rx="8" fill="#3a332c"/><text x="0" y="20" text-anchor="middle" font-size="46" font-weight="900" fill="#6a5f53" letter-spacing="6">БАР</text></g>`; }
+function oldBar(){ return storefront(540,1385,{wall:'#6b4a33'})+`<g transform="translate(540 760)"><rect x="-150" y="-44" width="300" height="88" rx="10" fill="#2a1d16"/><text x="0" y="18" text-anchor="middle" font-size="52" font-weight="900" fill="#F7C531" letter-spacing="8">БАР</text></g>`; }
+function hive(x,by){ return `<g transform="translate(${x} ${by})"><rect x="-90" y="-60" width="180" height="60" fill="#e3b04b"/><rect x="-90" y="-122" width="180" height="58" fill="#f0c45a"/><rect x="-90" y="-184" width="180" height="58" fill="#e3b04b"/><path d="M-110 -184 h220 l-30 -40 h-160z" fill="#a8743f"/><rect x="-20" y="-30" width="40" height="12" rx="6" fill="#5b3a1e"/></g>`; }
+function table(x,by){ return `<g transform="translate(${x} ${by})"><rect x="-120" y="-200" width="240" height="22" rx="6" fill="#8a5a32"/><rect x="-12" y="-180" width="24" height="180" fill="#5b3a1e"/></g>`; }
+function bars(t,t0,x,label,val,max,col){ const k=easeOut(prog(t,t0,.8)), h=560*val/max*k;
+  return `<g><rect x="${x-110}" y="${1360-h}" width="220" height="${h}" rx="14" fill="${col}"/>
+   <text x="${x}" y="${1340-h}" text-anchor="middle" font-size="48" font-weight="900" fill="${col}" opacity="${k}">${fmt(val*k)} ₴</text>
+   <text x="${x}" y="1440" text-anchor="middle" font-size="34" font-weight="800" fill="#2b2f3a">${label}</text></g>`; }
+
+// ---------- part 3 characters & props ----------
+const GREY={...APRON,shirt:'#9aa0a8',shirt2:'#868c94',hair:'#6d6d6d'};
+const LAWYER={...SUIT,hair:'#3a3a3a'};
+const OLYA={...APRON,shirt:'#2f8a6e',shirt2:'#26745c',hair:'#3a2418',extra:APRON.extra+
+  `<g transform="translate(0 -520)"><path d="M70 -60 q60 40 40 150 q-10 -60 -50 -100z" fill="#3a2418"/><rect x="-100" y="-40" width="24" height="90" rx="12" fill="#3a2418"/><rect x="76" y="-40" width="24" height="90" rx="12" fill="#3a2418"/></g>`};
+const IGOR={...APRON,shirt:'#4a5568',shirt2:'#3d4656',hair:'#bdbdbd',extra:APRON.extra+
+  `<g transform="translate(0 -520)"><path d="M-34 12 q34 -18 68 0 q-34 10 -68 0z" fill="#bdbdbd"/></g>`};
+const DANCER={shirt:'#f08a24',shirt2:'#d6741a',hair:'#2a1d16'};
+const POLICE={shirt:'#1f3a6b',shirt2:'#18305a',hair:'#2a1d16',extra:`<g transform="translate(0 -520)"><rect x="-96" y="-118" width="192" height="46" rx="14" fill="#1f3a6b"/><rect x="-110" y="-80" width="220" height="16" rx="8" fill="#152a50"/><circle cx="0" cy="-96" r="12" fill="#F7C531"/></g>`};
+const LANDLORD={shirt:'#6b4a33',shirt2:'#5a3d2a',hair:'#9a9a9a'};
+function msg(cx,y,txt,mine){ const w=Math.min(400,txt.length*13.5+44), x=mine?cx+190-w:cx-190;
+  return `<g><rect x="${x}" y="${y-34}" width="${w}" height="68" rx="22" fill="${mine?'#DCF3C8':'#fff'}" stroke="#dde2e6" stroke-width="3"/><text x="${x+22}" y="${y+9}" font-size="25" font-weight="700" fill="#2b2f3a">${txt}</text></g>`; }
+function vacancyCard(cx,cy,n){ return `<g><rect x="${cx-320}" y="${cy-150}" width="640" height="300" rx="28" fill="#fff"/>${hexagon(cx-230,cy-60,46,'#F2A516','#C47A10')}
+  <text x="${cx-160}" y="${cy-70}" font-size="52" font-weight="900" fill="#2b2f3a">ВАКАНСІЯ</text><text x="${cx-160}" y="${cy-22}" font-size="32" font-weight="700" fill="#9a8f80">бармен / барменка</text>
+  <line x1="${cx-280}" y1="${cy+30}" x2="${cx+280}" y2="${cy+30}" stroke="#eee" stroke-width="4"/>
+  <text x="${cx-280}" y="${cy+100}" font-size="40" font-weight="800" fill="#2b2f3a">Відгуків:</text><text x="${cx+280}" y="${cy+104}" text-anchor="end" font-size="64" font-weight="900" fill="#2E9E57">${n}</text></g>`; }
+function cash(cx,cy){ return `<g>${[0,1,2].map(k=>`<rect x="${cx-90+k*8}" y="${cy-50+k*-14}" width="180" height="90" rx="10" fill="#7cc48a" stroke="#3f9a5c" stroke-width="5"/><circle cx="${cx+k*8}" cy="${cy-5+k*-14}" r="22" fill="#3f9a5c"/>`).join('')}</g>`; }
+function ruleBoard(t,times){ const items=['ОФІЦІЙНО (+22%)','БУХГАЛТЕР 4 000/МІС','НІЧОГО НАПЕРЕД'];
+  let o=`<rect x="100" y="400" width="880" height="640" rx="30" fill="#fff"/><text x="540" y="500" text-anchor="middle" font-size="58" font-weight="900" fill="#2b2f3a" letter-spacing="2">НОВІ ПРАВИЛА</text><rect x="380" y="525" width="320" height="8" rx="4" fill="#F2A516"/>`;
+  items.forEach((s,k)=>{ if(times[k]!=null) o+=pop(t,times[k],`<g>${check(200,640+k*150,42)}<text x="270" y="${656+k*150}" font-size="46" font-weight="900" fill="#2b2f3a">${s}</text></g>`,540,640+k*150); });
+  return o; }
+function house(cx,by,angry,t){ const w=460,h=760,x=cx-w/2,y=by-h; let o=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#b9a48c"/><path d="M${x-30} ${y} l${w/2+30} -110 l${w/2+30} 110z" fill="#7a5a3c"/>`;
+  for(let r=0;r<3;r++)for(let c=0;c<2;c++){ const wx=x+70+c*200, wy=y+60+r*220, on=r*2+c<angry;
+    o+=`<rect x="${wx}" y="${wy}" width="120" height="150" rx="8" fill="${on?'#FFE08A':'#3d4a5a'}"/>`;
+    if(on) o+=`<g transform="translate(${wx+60} ${wy+92})"><circle r="40" fill="#f2c7a5"/><path d="M-26 -18 l18 8 M26 -18 l-18 8" stroke="#3a2a22" stroke-width="6" stroke-linecap="round"/><path d="M-14 22 q14 -12 28 0" stroke="#3a2a22" stroke-width="5" fill="none"/></g>`; }
+  return o; }
+
+function checklist(t,items){ // notebook page; items = [[label, t0], ...]
+  let o=`<rect x="110" y="400" width="860" height="${190+items.length*150}" rx="24" fill="#fffdf6" stroke="#e6dcc8" stroke-width="4"/>
+   <rect x="170" y="400" width="6" height="${190+items.length*150}" fill="#f2b8b8"/>
+   <text x="540" y="490" text-anchor="middle" font-size="52" font-weight="900" fill="#2b2f3a" letter-spacing="3">ПЕРЕВІРИТИ</text>`;
+  items.forEach(([s,t0],k)=>{ const y=600+k*150;
+    o+=pop(t,t0,`<g><rect x="210" y="${y-34}" width="60" height="60" rx="10" fill="none" stroke="#2b2f3a" stroke-width="6"/><text x="300" y="${y+12}" font-size="36" font-weight="900" fill="#2b2f3a">${s}</text><text x="930" y="${y+18}" text-anchor="end" font-size="64" font-weight="900" fill="#E23B3B">?</text></g>`,540,y); });
+  return o; }
+
+
+// ---------- part 4 props ----------
+function bp(cx,cy,label,bg='#2b2f3a',fg='#fff',fs=50){ const w=label.length*fs*0.66+70;
+  return `<g><rect x="${cx-w/2}" y="${cy-fs*0.95}" width="${w}" height="${fs*1.9}" rx="${fs*0.95}" fill="${bg}"/><text x="${cx}" y="${cy+fs*0.36}" text-anchor="middle" font-size="${fs}" font-weight="900" fill="${fg}">${label}</text></g>`; }
+const INSPECTOR={shirt:'#3b4a5e',shirt2:'#30405a',hair:'#4a4a4a',extra:`<rect x="26" y="-410" width="54" height="64" rx="6" fill="#fff" stroke="#1f3a6b" stroke-width="4"/><rect x="34" y="-392" width="38" height="8" fill="#1f3a6b"/><rect x="34" y="-374" width="26" height="6" fill="#9aa0a8"/><rect x="-150" y="-310" width="80" height="110" rx="8" fill="#C7451B"/><rect x="-150" y="-310" width="80" height="16" fill="#a8370f"/>`};
+function fineCard(cx,cy){ return `<g><rect x="${cx-360}" y="${cy-180}" width="720" height="360" rx="32" fill="#fff" stroke="#E23B3B" stroke-width="12"/><text x="${cx}" y="${cy-70}" text-anchor="middle" font-size="58" font-weight="900" fill="#E23B3B" letter-spacing="8">ШТРАФ</text><text x="${cx}" y="${cy+90}" text-anchor="middle" font-size="140" font-weight="900" fill="#2b2f3a">73 500 ₴</text></g>`; }
+function commentCard(cx,cy,handle,lines,times,t){ const h=170+lines.length*62, y=cy-h/2;
+  let o=`<rect x="${cx-440}" y="${y}" width="880" height="${h}" rx="30" fill="#fff"/><circle cx="${cx-360}" cy="${y+70}" r="40" fill="#F2A516"/><text x="${cx-360}" y="${y+84}" text-anchor="middle" font-size="40" font-weight="900" fill="#fff">${handle[1].toUpperCase()}</text>
+   <text x="${cx-300}" y="${y+62}" font-size="36" font-weight="900" fill="#2b2f3a">${handle}</text><text x="${cx-300}" y="${y+100}" font-size="26" font-weight="700" fill="#9a8f80">коментар до частини 3</text>`;
+  lines.forEach((l,k)=>{ if(t>=times[k]) o+=`<text x="${cx-390}" y="${y+170+k*62}" font-size="38" font-weight="800" fill="#2b2f3a">${l}</text>`; });
+  o+=`<path d="M${cx+330} ${y+h-50} q-14 -22 -30 -6 q-16 -16 -30 6 q30 34 30 34 q30 -34 30 -34z" fill="#E23B3B" transform="translate(30 0)"/>`;
+  return o; }
+function checklist2(t,title,items){ // [[label,t0,ok]]
+  let o=`<rect x="110" y="400" width="860" height="${190+items.length*150}" rx="24" fill="#fffdf6" stroke="#e6dcc8" stroke-width="4"/><rect x="170" y="400" width="6" height="${190+items.length*150}" fill="#f2b8b8"/>
+   <text x="540" y="490" text-anchor="middle" font-size="52" font-weight="900" fill="#2b2f3a" letter-spacing="3">${title}</text>`;
+  items.forEach(([s,t0,ok],k)=>{ const y=600+k*150;
+    o+=pop(t,t0,`<g>${ok===false?cross(250,y,40):ok===null?`<circle cx="250" cy="${y}" r="40" fill="#E8901A"/><text x="250" y="${y+18}" text-anchor="middle" font-size="52" font-weight="900" fill="#fff">?</text>`:check(250,y,40)}<text x="320" y="${y+14}" font-size="42" font-weight="900" fill="#2b2f3a">${s}</text></g>`,540,y); });
+  return o; }
+function barrel(x,by,label,col='#a8743f'){ return `<g transform="translate(${x} ${by})"><ellipse cx="0" cy="0" rx="130" ry="22" fill="#00000018"/><path d="M-110 -330 q-34 165 0 330 h220 q34 -165 0 -330z" fill="${col}"/><rect x="-128" y="-260" width="256" height="16" fill="#5b3a1e"/><rect x="-128" y="-86" width="256" height="16" fill="#5b3a1e"/><ellipse cx="0" cy="-330" rx="110" ry="22" fill="#c9965a"/>
+  <rect x="-90" y="-210" width="180" height="80" rx="10" fill="#fffdf6"/><text x="0" y="-155" text-anchor="middle" font-size="40" font-weight="900" fill="#5b3a1e">${label}</text></g>`; }
+function closedSign(cx,cy,sw=0){ return `<g transform="rotate(${sw} ${cx} ${cy-120})"><path d="M${cx-120} ${cy-50} L${cx} ${cy-120} L${cx+120} ${cy-50}" stroke="#5b3a1e" stroke-width="6" fill="none"/><circle cx="${cx}" cy="${cy-120}" r="10" fill="#5b3a1e"/><rect x="${cx-250}" y="${cy-50}" width="500" height="130" rx="16" fill="#8a5a32" stroke="#5b3a1e" stroke-width="8"/><text x="${cx}" y="${cy+38}" text-anchor="middle" font-size="64" font-weight="900" fill="#fff" letter-spacing="4">ЗАЧИНЕНО</text></g>`; }
+function crates(x,by){ return `<g>${[[-130,0],[130,0],[0,-150]].map(([dx,dy])=>`<g transform="translate(${x+dx} ${by+dy})"><rect x="-120" y="-150" width="240" height="150" rx="8" fill="#c9965a" stroke="#8a5a32" stroke-width="8"/><path d="M-120 -75 h240" stroke="#8a5a32" stroke-width="6"/>${[-70,0,70].map(b=>`<rect x="${b-16}" y="-200" width="32" height="70" rx="8" fill="#F2A516"/>`).join('')}</g>`).join('')}</g>`; }
+function callScreen(cx,cy,name,t){ const pulse=1+Math.sin(t*8)*.06;
+  return phoneBig(cx,cy,`<rect x="${cx-206}" y="${cy-330}" width="412" height="660" rx="18" fill="#2b2f3a"/><g transform="translate(${cx} ${cy-150}) scale(${pulse})"><circle r="90" fill="#6b4a33"/><text y="34" text-anchor="middle" font-size="96" font-weight="900" fill="#fff">${name[0]}</text></g>
+   <text x="${cx}" y="${cy+0}" text-anchor="middle" font-size="40" font-weight="900" fill="#fff">${name}</text><text x="${cx}" y="${cy+46}" text-anchor="middle" font-size="28" font-weight="700" fill="#9aa0a8">дзвонить…</text>
+   <circle cx="${cx-100}" cy="${cy+220}" r="50" fill="#E23B3B"/><circle cx="${cx+100}" cy="${cy+220}" r="50" fill="#2E9E57"/>`); }
+function contract(cx,cy,hi,s=1){ return `<g transform="translate(${cx} ${cy}) scale(${s})"><rect x="-300" y="-380" width="600" height="760" rx="20" fill="#fff" stroke="#ddd" stroke-width="5"/>
+  <text x="0" y="-300" text-anchor="middle" font-size="44" font-weight="900" fill="#2b2f3a" letter-spacing="3">ДОГОВІР ОРЕНДИ</text>
+  ${[0,1,2,3,4,5].map(i=>`<rect x="-240" y="${-230+i*52}" width="${480-(i%3)*90}" height="14" rx="7" fill="#e3e3e3"/>`).join('')}
+  ${hi?`<rect x="-270" y="90" width="540" height="190" rx="14" fill="#FFE08A"/>`:''}
+  <text x="-240" y="150" font-size="34" font-weight="900" fill="#2b2f3a">п. 7. Ремонт даху —</text><text x="-240" y="200" font-size="34" font-weight="900" fill="#2b2f3a">за рахунок орендаря.</text><text x="-240" y="250" font-size="34" font-weight="900" fill="#2b2f3a">Строк — 3 місяці.</text>
+  <path d="M60 330 q30 -30 60 0 t60 0" stroke="#1f3a6b" stroke-width="5" fill="none"/></g>`; }
+function drops(cx,by,t){ let o=''; [[-120,0],[30,.35],[150,.7]].forEach(([dx,ph])=>{ const k=(t*0.9+ph)%1; o+=`<path d="M${cx+dx} ${by+k*520} q30 50 0 70 q-30 -20 0 -70z" fill="#4a9fd8" opacity="${1-k*.6}"/>`; }); return o; }
+function umbrellaTable(x,by){ return `<g>${table(x,by)}<rect x="${x-6}" y="${by-480}" width="12" height="300" fill="#5b3a1e"/><path d="M${x-170} ${by-420} Q${x} ${by-560} ${x+170} ${by-420}z" fill="#F2A516"/><path d="M${x-170} ${by-420} h340" stroke="#C47A10" stroke-width="8"/></g>`; }
+function bigNum(x,y,txt,col='#2b2f3a',fs=120){ return `<text x="${x}" y="${y}" text-anchor="middle" font-size="${fs}" font-weight="900" fill="${col}">${txt}</text>`; }
+function factory2(cx,by,label){ return factory(cx,by)+`<text x="${cx}" y="${by+70}" text-anchor="middle" font-size="40" font-weight="900" fill="#2b2f3a">${label}</text>`; }
+
+function renderSteps(t){
+  const ph=window.PH; let i=0; for(let k=0;k<ph.length;k++) if(t>=ph[k].s-0.05) i=k;
+  const key=ph[i].scene, grp=key[0];
+  let o='', bg='#EFE6DA';
+  const at=(k,off=0)=>S(k).s+off;
+  const WS=(k,sub,nth=0)=>{ const n=w=>w.toLowerCase().replace(/[^0-9a-zа-яіїєґ']/g,''); let c=0;
+    for(const w of S(k).words) if(n(w.text).startsWith(sub)){ if(c++===nth) return w.s; } return S(k).s; };
+  const dtag=(k,n,label,x,y)=>{ const d=S(k).ded[n]; return pop(t,d[0]-.25,bp(x,y,label,'#E23B3B'),x,y); };
+  switch(key){
+  // ---------- hook: the fine (day 56) ----------
+  case 'h1': o+=floor();
+    o+=pop(t,0,fineCard(540,640),540,640,.3);
+    o+=person(300,1460,0.9,'sad',t,NAZAR_BAR); o+=pop(t,.15,person(800,1460,0.9,'neutral',t,INSPECTOR),800,1200);
+    o+=stamp(t,WS('h1','сам'),'ВИНЕН Я',540,960,'#E23B3B',-7,72); break;
+  // ---------- lawyer (day 49) ----------
+  case 'j1': o+=floor(); o+=clockPill(t,at('j1'),'ТИЖДЕНЬ ТОМУ',540,440);
+    o+=pop(t,WS('j1','покличте')-.2,commentCard(540,800,'@Dinvi',['Покличте юриста,','хай складе список.','Перевірте всіх,','з ким працюєте.'],[WS('j1','покличте'),WS('j1','хай'),WS('j1','перевірте'),WS('j1','з')],t),540,800,.4);
+    o+=pop(t,at('j1',.2),person(540,1460,0.55,'neutral',t),540,1300); break;
+  case 'j2': o+=floor(); o+=person(250,1460,0.85,'happy',t,NAZAR_BAR);
+    o+=pop(t,WS('j2','юрист'),person(760,1460,0.85,'neutral',t,LAWYER),760,1200);
+    o+=pop(t,WS('j2','пройшов'),`<g transform="rotate(6 760 640)">${doc(760,640,'СПИСОК',1.3)}</g>`,760,640);
+    o+=dtag('j2',0,'4 000 ₴',300,560); break;
+  case 'j3': o+=floor();
+    o+=checklist2(t,'СПИСОК ЮРИСТА',[['МЕДКНИЖКИ',WS('j3','медкнижки'),true],['ВОГНЕГАСНИКИ',WS('j3','вогнегасники'),true],['ПЛАН ЕВАКУАЦІЇ',WS('j3','план'),true]]);
+    o+=pop(t,WS('j3','10')-.2,bp(540,1180,'10 500 ₴','#E23B3B'),540,1180); break;
+  case 'j4': { o+=floor(); const ig=t>=WS('j4','ігор');
+    o+=person(270,1460,0.85,ig?'worried':'happy',t,VLAD); o+=person(800,1460,0.85,'neutral',t,IGOR);
+    o+=pop(t,WS('j4','судимість'),bp(270,540,'СУДИМІСТЬ?','#1f3a6b'),270,540);
+    if(ig){ o+=pop(t,WS('j4','ігор'),`<path d="M752 ${1460-0.85*560} l40 -26" stroke="#4a3020" stroke-width="9" stroke-linecap="round"/>`,780,1000);
+      o+=pop(t,WS('j4','подивився'),bubble(620,600,360,130,'. . .',60,780),800,660); }
+    break; }
+  case 'j5': { o+=floor();
+    [[170,MILANA],[330,OLYA],[490,IGOR]].forEach(([x,op],k)=>o+=pop(t,at('j5',.05+k*.12),person(x,1300,0.42,'happy',t+k,op),x,1200));
+    o+=pop(t,WS('j5','перевірили'),check(330,620,70),330,620);
+    o+=pop(t,WS('j5','медоварню'),factory2(800,1300,'НОВА МЕДОВАРНЯ'),800,1200);
+    o+=pop(t,WS('j5','ні'),cross(800,620,70),800,620); break; }
+  // ---------- cheap mead (day 50) ----------
+  case 'm1': o+=floor();
+    o+=pop(t,at('m1',.05),barrel(300,1390,'СТАРА','#8a6a4a'),300,1200); o+=pop(t,at('m1',.1),bp(300,880,'50 000 ₴','#9a8f80'),300,880);
+    o+=pop(t,WS('m1','нова'),barrel(780,1390,'НОВА'),780,1200);
+    o+=pop(t,WS('m1','дешевше'),bp(700,500,'−30%','#2E9E57'),700,500);
+    o+=dtag('m1',0,'35 000 ₴',780,880); break;
+  case 'm2': o+=floor(); { const sour=t>=WS('m2','ставить');
+    o+=person(320,1460,0.95,sour?'sad':'neutral',t,IGOR); o+=hexCounter(540,1460,860);
+    o+=`<g transform="translate(0 ${sour?0:-120})">${meadGlass(560,1290,.9,.8)}</g>`;
+    o+=pop(t,WS('m2','назаре'),bubble(380,500,620,190,'НАЗАРЕ…',60,480),690,600);
+    if(t>=WS('m2','це')) o+=`<rect x="380" y="500" width="620" height="190" rx="30" fill="#fff"/><text x="690" y="580" text-anchor="middle" font-size="46" font-weight="900" fill="#2b2f3a">ЦЕ НЕ ТА</text><text x="690" y="640" text-anchor="middle" font-size="46" font-weight="900" fill="#2b2f3a">МЕДОВУХА</text>`;
+    break; }
+  case 'm3': o+=floor(); o+=person(330,1460,0.95,'happy',t,NAZAR_BAR);
+    o+=pop(t,WS('m3','рахую'),`<g><rect x="600" y="520" width="300" height="400" rx="24" fill="#3d4450"/><rect x="630" y="550" width="240" height="90" rx="10" fill="#22262d"/><text x="850" y="615" text-anchor="end" font-size="50" font-weight="900" fill="#5fe08a">15 000</text>${[0,1,2].map(r=>[0,1,2].map(c=>`<rect x="${640+c*78}" y="${670+r*76}" width="62" height="58" rx="8" fill="#5d6673"/>`).join('')).join('')}</g>`,750,720);
+    o+=pop(t,WS('m3','15'),bp(750,460,'ЕКОНОМІЯ','#2E9E57'),750,460);
+    o+=stamp(t,WS('m3','беру'),'БЕРУ',750,1080,'#E8901A',-8,72); break;
+  // ---------- the week (day 54) ----------
+  case 'w2': { o+=floor(); const cash0=WS('w2','каса');
+    if(t<cash0){ [[230,0],[540,1],[850,2]].forEach(([x,k])=>{ o+=person(x,1460,0.65,'neutral',t+k,BLOGGERS[k]); o+=meadGlass(x+90,1080,.6,0); });
+      o+=pop(t,WS('w2','другий'),cross(540,640,70),540,640); o+=pop(t,WS('w2','другий')+.1,bp(540,500,'ДРУГИЙ КЕЛИХ','#E23B3B'),540,500); }
+    else { o+=pop(t,cash0,register2(540,1390,'95 000'),540,1250);
+      [['ЗАРПЛАТИ 17 000 ₴',0],['ПОДАТОК 5 000 ₴',1],['СВІТЛО 7 500 ₴',2]].forEach(([s,n],k)=>o+=dtag('w2',n+1,s,540,560+k*160)); }
+    break; }
+  // ---------- inspection (day 56) ----------
+  case 'i1': { o+=floor(); const kn=WS('i1','стукає'), sh=(t>kn&&t<kn+.6)?Math.sin(t*60)*6:0;
+    o+=`<g transform="translate(${sh} 0)">${door(330,1385,'',  '#8a5a32')}</g>`;
+    o+=pop(t,kn,`<text x="330" y="760" text-anchor="middle" font-size="80" font-weight="900" fill="#E23B3B" transform="rotate(-8 330 760)">ТУК-ТУК</text>`,330,740);
+    o+=clockPill(t,at('i1'),'ПОНЕДІЛОК',540,440);
+    o+=pop(t,WS('i1','інспектор'),person(780,1460,0.9,'neutral',t,INSPECTOR),780,1200);
+    o+=pop(t,WS('i1','на'),bubble(520,560,500,150,'НА ВАС СКАРГА',46,780),770,630); break; }
+  case 'i2': o+=floor(); o+=pop(t,at('i2'),doc(540,720,'СКАРГА',1.6,'#E23B3B'),540,720);
+    o+=pop(t,WS('i2','неоформлені'),bp(330,1030,'НЕОФОРМЛЕНІ','#2b2f3a'),330,1030);
+    o+=pop(t,WS('i2','продаж'),bp(760,1030,'БЕЗ ЧЕКІВ','#2b2f3a'),760,1030);
+    o+=pop(t,WS('i2','хто'),person(860,1460,0.5,'neutral',t,{...GREY,extra:PHONE_UP})+bp(860,1300,'ДЕНИС','#E23B3B'),860,1300); break;
+  case 'i3': o+=floor();
+    o+=checklist2(t,'ІНСПЕКТОР ПЕРЕВІРЯЄ',[['ОФОРМЛЕННЯ',WS('i3','люди'),true],['ЧЕКИ',WS('i3','чеки'),true],['НАКЛАДНІ',WS('i3','накладні'),null]]);
+    o+=pop(t,at('i3',.1),bp(760,1120,'ЗА СПИСКОМ ЮРИСТА','#2E9E57'),760,1120); break;
+  case 'i4': o+=floor(); { const v=WS('i4','вилучають');
+    if(t<v){ o+=`<rect x="140" y="420" width="800" height="430" rx="26" fill="#fff"/><text x="540" y="500" text-anchor="middle" font-size="40" font-weight="900" fill="#2b2f3a" letter-spacing="2">РЕЄСТР ЛІЦЕНЗІАТІВ</text><rect x="200" y="540" width="680" height="80" rx="40" fill="#f0f0f0"/><text x="250" y="594" font-size="36" font-weight="800" fill="#2b2f3a">нова медоварня</text>`;
+      o+=pop(t,WS('i4','немає'),`<g>${cross(540,740,50)}<text x="610" y="756" font-size="40" font-weight="900" fill="#E23B3B">НЕ ЗНАЙДЕНО</text></g>`,600,740); o+=person(540,1460,0.55,'worried',t,NAZAR_BAR); }
+    else { o+=crates(540,1390); o+=stamp(t,v,'ВИЛУЧЕНО',540,1000,'#E23B3B',-8,80); o+=person(880,1460,0.7,'neutral',t,INSPECTOR); }
+    break; }
+  case 'i5': o+=floor(); o+=person(300,1460,0.95,'sad',t,NAZAR_BAR);
+    o+=pop(t,WS('i5','штраф'),fineCard(540,700),540,700,.3); break;
+  case 'i6': o+=floor();
+    o+=pop(t,at('i6',.05),`<g><rect x="80" y="440" width="440" height="460" rx="28" fill="#fff"/>${check(300,580,70)}<text x="300" y="730" text-anchor="middle" font-size="40" font-weight="900" fill="#2b2f3a">СКАРГА</text><text x="300" y="785" text-anchor="middle" font-size="40" font-weight="900" fill="#2b2f3a">ДЕНИСА</text><text x="300" y="850" text-anchor="middle" font-size="30" font-weight="800" fill="#2E9E57">ВІДБИЛИ</text></g>`,300,670);
+    o+=pop(t,WS('i6','від',1),`<g><rect x="560" y="440" width="440" height="460" rx="28" fill="#fff"/>${cross(780,580,70)}<text x="780" y="730" text-anchor="middle" font-size="40" font-weight="900" fill="#2b2f3a">МОЯ</text><text x="780" y="785" text-anchor="middle" font-size="40" font-weight="900" fill="#2b2f3a">ПОМИЛКА</text><text x="780" y="850" text-anchor="middle" font-size="30" font-weight="800" fill="#E23B3B">НІ</text></g>`,780,670);
+    o+=person(540,1460,0.55,'sad',t,NAZAR_BAR); break;
+  // ---------- consequences ----------
+  case 'n2': o+=floor(); o+=storefront(540,1385,{wall:'#c8a27a'}); o+=woodSign(540,760);
+    o+=pop(t,at('n2',.05),closedSign(540,1060,Math.sin(t*2)*3),540,1060); o+=clockPill(t,WS('n2','три'),'3 ДНІ',540,440);
+    o+=pop(t,WS('n2','зарплати'),bp(860,560,'ЗАРПЛАТИ ЙДУТЬ','#E23B3B'),860,560); break;
+  case 'n3': o+=floor(); o+=pop(t,at('n3',.05),barrel(540,1390,'СТАРА','#8a6a4a'),540,1200);
+    o+=person(200,1460,0.75,'neutral',t,IGOR); o+=person(880,1460,0.75,'neutral',t,NAZAR_BAR);
+    o+=pop(t,WS('n3','повну'),bp(540,480,'ПОВНА ЦІНА','#2b2f3a'),540,480); o+=dtag('n3',0,'25 000 ₴',540,880); break;
+  case 'n4': case 'n5': o+=floor(); o+=person(280,1460,0.9,'sad',t,NAZAR_BAR); o+=person(800,1460,0.9,key==='n5'?'happy':'neutral',t,VLAD);
+    o+=hexCounter(540,1460,900); o+=pop(t,WS('n4','келих'),meadGlass(540,1300,1,1),540,1300);
+    if(key==='n5') o+=pop(t,at('n5'),bubble(240,520,760,200,'НА ГОЛОВНОМУ',62,800),620,620)+pop(t,at('n5',.05),`<text x="620" y="690" text-anchor="middle" font-size="50" font-weight="900" fill="#E23B3B">НЕ ЕКОНОМИМО</text>`,620,670);
+    break;
+  // ---------- money ----------
+  case 'k1': o+=floor(); o+=person(220,1460,0.75,'neutral',t,NAZAR_BAR);
+    o+=pop(t,WS('k1','70')-.3,register2(620,1390,'70 000'),620,1250);
+    o+=pop(t,WS('k1','мінус'),bp(620,620,'ВИТРАТИ 28 000 ₴','#E23B3B'),620,620); break;
+  case 'k2': { o+=floor(); const was=WS('k2','було');
+    if(t<was){ o+=dtag('k2',0,'ОРЕНДА 50 000 ₴',540,600); o+=dtag('k2',1,'КРЕДИТ 27 000 ₴',540,780); o+=clockPill(t,at('k2'),'НЕДІЛЯ',540,440); }
+    else { o+=pop(t,was,bigNum(540,640,'307 000 ₴','#9a8f80',100)+`<line x1="300" y1="610" x2="780" y2="610" stroke="#E23B3B" stroke-width="10"/>`,540,600);
+      o+=pop(t,WS('k2','лишилось'),`<text x="540" y="760" text-anchor="middle" font-size="90" font-weight="900" fill="#2b2f3a">↓</text>`,540,730);
+      o+=pop(t,WS('k2','190'),bigNum(540,920,'190 000 ₴','#E8901A',130),540,880); }
+    o+=person(540,1460,0.55,'worried',t,NAZAR_BAR); break; }
+  // ---------- finale: courtyard → roof ----------
+  case 'f0': o+=floor('#cfc6b6'); { const ph2=t>=WS('f0','дзвонить');
+    o+=person(260,1460,0.9,'happy',t,ph2?VLAD_PHONE:VLAD);
+    o+=pop(t,WS('f0','столики'),umbrellaTable(640,1390),640,1100); o+=pop(t,WS('f0','столики')+.15,umbrellaTable(900,1390),900,1100);
+    o+=pop(t,WS('f0','подвір'),bp(760,470,'ПОДВІР’Я','#2E9E57'),760,470); break; }
+  case 'f1': bg='#2a2d36'; o+=`<rect x="0" y="1380" width="1080" height="540" fill="#1d1f26"/>`;
+    o+=callScreen(540,820,'ОРЕНДОДАВЕЦЬ',t);
+    o+=pop(t,WS('f1','дах'),bubble(80,470,420,130,'ДАХ ТЕЧЕ',52,200),290,530);
+    o+=pop(t,WS('f1','пункт'),bubble(600,1180,400,130,'ПУНКТ 7',52,700),800,1240); break;
+  case 'f2': o+=floor(); o+=person(250,1460,0.85,'neutral',t,VLAD);
+    o+=pop(t,WS('f2','договір'),contract(690,800,false,.8),690,800);
+    o+=pop(t,WS('f2','знижку'),bp(690,1180,'ЗНИЖКА −20 000','#2E9E57'),690,1180); break;
+  case 'f2b': o+=floor(); o+=contract(540,820,t>=WS('f2b','ремонт'),1.05);
+    o+=person(150,1460,0.5,'worried',t,VLAD);
+    o+=stamp(t,WS('f2b','строк'),'3 МІСЯЦІ',800,1330,'#E23B3B',-8,60); break;
+  case 'f3': o+=floor(); o+=house(540,1385,0,t); o+=drops(540,640,t);
+    o+=pop(t,WS('f3','60'),bp(200,470,'60 ДНІВ','#E23B3B'),200,470);
+    o+=pop(t,WS('f3','190'),bp(840,470,'190 000 ₴','#E8901A'),840,470);
+    o+=pop(t,WS('f3','130'),stamp(t,WS('f3','130'),'130 РОКІВ',540,1250,'#5b3a1e',-6,60),540,1250); break;
+  case 'f4': o+=floor(); o+=person(540,1460,0.95,'neutral',t,NAZAR_BAR);
+    o+=pop(t,at('f4'),bubble(100,460,880,150,'ДОЧИТУЄТЕ ДОГОВОРИ?',52,500),540,535);
+    o+=pop(t,WS('f4','пиши'),bubble(200,680,680,140,'ПИШИ В КОМЕНТАРЯХ',46,560),540,750);
+    o+=pop(t,WS('f4',"п'ята"),`<rect x="250" y="1760" width="580" height="100" rx="50" fill="#FF6A2B"/><text x="540" y="1825" text-anchor="middle" font-size="46" font-weight="900" fill="#fff">ЧАСТИНА 5 · ДАХ ▶</text>`,540,1810); break;
+  }
+  const dark=(bg==='#2a2d36');
+  o+=header(t,key);
+  o+=pill(60,290,LABELS[grp], dark?'#F2A516':'#2b2f3a', dark?'#24180F':'#fff');
+  o+=moneyFloats(t);
+  window.__bg=bg;
+  return o;
+}
+
+function render(t){
+  let out=renderSteps(t);
+  out+=caption(t);
+  document.getElementById('s').innerHTML=`<defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="1080" height="1920" fill="${window.__bg||'#EFE6DA'}"/>`+out;
+}
+window.render=render;
+</script>
+</body></html>
